@@ -6,6 +6,13 @@
       "scumm_version": 6,
       "rooms": 89,
       "objects": 744
+    },
+    {
+      "id": "sam_and_max_hit_the_road",
+      "title": "Sam & Max Hit the Road",
+      "scumm_version": 6,
+      "rooms": 85,
+      "objects": 949
     }
   ]
 }
