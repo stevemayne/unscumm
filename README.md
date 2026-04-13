@@ -101,10 +101,19 @@ python -m scumm_deconstruct \
 ## Current status
 
 - ✅ SCUMM v6 chunk parsing (rooms, objects, verb tables, scripts)
-- ✅ v6 bytecode scanner for room-transition opcodes (`loadRoom`, `loadRoomWithEgo`)
+- ✅ v6 bytecode analyzer with symbolic stack model
+  - room transitions (`loadRoom`, `loadRoomWithEgo`)
+  - inline dialogue / narration (print & talk opcodes, handling 0xFF/0xFE escapes)
+  - effects (`pickupObject`, `setState`, `setOwner`, `startScript`, `startObject`)
+  - preconditions (`owns(obj)`, `state(obj) == N`, `classOfIs`)
+- ✅ Per-verb interaction extraction (dialogue + effects + preconditions per verb on every object)
 - ✅ Per-room background extraction via nutcracker
-- ✅ React viewer with room list, scene map, clickable exits
-- ⬜ Puzzle/narrative extraction (item dependencies, verb-object matrix)
+- ✅ React viewer with room list, interactive scene map, clickable exits, per-object interactions panel, URL-based routing
+- ⬜ Cross-room item dependency graph (where each item is picked up vs. where it's required)
+- ⬜ Verb-name extraction from `verbOps` scripts (today the UI shows numeric verb IDs)
 - ⬜ Scene-graph visualisation (Mermaid/Graphviz/force-directed)
 
-Tested against **Day of the Tentacle** (SCUMM v6): 89 rooms, 744 objects, 151 transitions recovered by static analysis.
+Tested against **Day of the Tentacle** (SCUMM v6):
+- 89 rooms, 744 objects, 137 room transitions
+- 2,568 lines of in-game dialogue extracted
+- 1,301 object-state effects, 204 inventory/state preconditions
