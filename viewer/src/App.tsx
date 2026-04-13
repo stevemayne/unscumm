@@ -2,39 +2,68 @@ import { useEffect, useMemo, useState } from "react";
 import type { GameData, GamesManifest, Room } from "./types";
 import { RoomList } from "./components/RoomList";
 import { RoomDetails } from "./components/RoomDetails";
+import { ItemList } from "./components/ItemList";
+import { ItemDetails } from "./components/ItemDetails";
 import { useLocation } from "./useLocation";
+import { buildItemIndex } from "./itemIndex";
+import { buildRoomLabels } from "./roomLabels";
 import "./App.css";
 
 const BASE = import.meta.env.BASE_URL;
 
+type View = "rooms" | "items";
+
 interface Route {
   gameId: string | null;
-  roomId: number | null;
+  view: View;
+  selectedId: number | null; // roomId or itemId depending on view
 }
 
-const ROUTE_RE = /^\/games\/([^/]+)(?:\/rooms\/(\d+))?\/?$/;
+const ROOM_RE = /^\/games\/([^/]+)\/rooms\/(\d+)\/?$/;
+const ROOMS_RE = /^\/games\/([^/]+)\/rooms\/?$/;
+const ITEM_RE = /^\/games\/([^/]+)\/items\/(\d+)\/?$/;
+const ITEMS_RE = /^\/games\/([^/]+)\/items\/?$/;
+const GAME_RE = /^\/games\/([^/]+)\/?$/;
 
 function parseRoute(path: string): Route {
-  const m = ROUTE_RE.exec(path);
-  if (!m) return { gameId: null, roomId: null };
-  return { gameId: m[1], roomId: m[2] != null ? Number(m[2]) : null };
+  let m;
+  if ((m = ROOM_RE.exec(path))) {
+    return { gameId: m[1], view: "rooms", selectedId: Number(m[2]) };
+  }
+  if ((m = ROOMS_RE.exec(path))) {
+    return { gameId: m[1], view: "rooms", selectedId: null };
+  }
+  if ((m = ITEM_RE.exec(path))) {
+    return { gameId: m[1], view: "items", selectedId: Number(m[2]) };
+  }
+  if ((m = ITEMS_RE.exec(path))) {
+    return { gameId: m[1], view: "items", selectedId: null };
+  }
+  if ((m = GAME_RE.exec(path))) {
+    return { gameId: m[1], view: "rooms", selectedId: null };
+  }
+  return { gameId: null, view: "rooms", selectedId: null };
 }
 
-function buildRoute(gameId: string, roomId: number | null): string {
-  return roomId != null
-    ? `/games/${gameId}/rooms/${roomId}`
-    : `/games/${gameId}`;
+function buildRoute(
+  gameId: string,
+  view: View,
+  selectedId: number | null,
+): string {
+  const segment = view === "items" ? "items" : "rooms";
+  return selectedId != null
+    ? `/games/${gameId}/${segment}/${selectedId}`
+    : `/games/${gameId}/${segment}`;
 }
 
 export default function App() {
   const { path, navigate } = useLocation();
-  const { gameId: urlGameId, roomId: urlRoomId } = parseRoute(path);
+  const route = parseRoute(path);
 
   const [manifest, setManifest] = useState<GamesManifest | null>(null);
   const [game, setGame] = useState<GameData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. Load the games manifest once at startup.
   useEffect(() => {
     fetch(`${BASE}games.json`)
       .then((r) => {
@@ -45,16 +74,14 @@ export default function App() {
       .catch((e) => setError(String(e)));
   }, []);
 
-  // Resolve URL gameId → effective gameId (fall back to first in manifest).
   const effectiveGameId = useMemo<string | null>(() => {
     if (!manifest) return null;
-    if (urlGameId && manifest.games.some((g) => g.id === urlGameId)) {
-      return urlGameId;
+    if (route.gameId && manifest.games.some((g) => g.id === route.gameId)) {
+      return route.gameId;
     }
     return manifest.games[0]?.id ?? null;
-  }, [manifest, urlGameId]);
+  }, [manifest, route.gameId]);
 
-  // 2. When the effective game changes, load its parsed.json.
   useEffect(() => {
     if (!effectiveGameId) return;
     setGame(null);
@@ -67,39 +94,71 @@ export default function App() {
       .catch((e) => setError(String(e)));
   }, [effectiveGameId]);
 
-  // Resolve URL roomId → effective roomId (must exist in loaded game).
-  const effectiveRoomId = useMemo<number | null>(() => {
-    if (!game) return null;
-    if (urlRoomId != null && game.rooms[String(urlRoomId)]) {
-      return urlRoomId;
-    }
-    const sorted = Object.keys(game.rooms).sort(
-      (a, b) => Number(a) - Number(b),
-    );
-    return sorted[0] != null ? Number(sorted[0]) : null;
-  }, [game, urlRoomId]);
+  const itemIndex = useMemo(
+    () => (game ? buildItemIndex(game) : null),
+    [game],
+  );
+  const roomLabels = useMemo(
+    () => (game ? buildRoomLabels(game) : {}),
+    [game],
+  );
 
-  // Canonicalize the URL whenever it doesn't match the resolved state.
-  // Uses replaceState so we don't pollute history with fallback defaults.
+  // Resolve effective selection based on the view.
+  const effectiveSelectedId = useMemo<number | null>(() => {
+    if (!game) return null;
+    if (route.view === "rooms") {
+      if (route.selectedId != null && game.rooms[String(route.selectedId)]) {
+        return route.selectedId;
+      }
+      const sorted = Object.keys(game.rooms).sort(
+        (a, b) => Number(a) - Number(b),
+      );
+      return sorted[0] != null ? Number(sorted[0]) : null;
+    }
+    // items
+    if (!itemIndex) return null;
+    if (
+      route.selectedId != null &&
+      itemIndex.items[route.selectedId] != null
+    ) {
+      return route.selectedId;
+    }
+    return itemIndex.ordered[0] ?? null;
+  }, [game, itemIndex, route.view, route.selectedId]);
+
+  // Canonicalize the URL when defaults kick in.
   useEffect(() => {
-    if (!effectiveGameId || effectiveRoomId == null) return;
-    const target = buildRoute(effectiveGameId, effectiveRoomId);
+    if (!effectiveGameId || effectiveSelectedId == null) return;
+    const target = buildRoute(effectiveGameId, route.view, effectiveSelectedId);
     if (target !== path) {
       navigate(target, { replace: true });
     }
-  }, [effectiveGameId, effectiveRoomId, path, navigate]);
+  }, [effectiveGameId, route.view, effectiveSelectedId, path, navigate]);
 
-  // Update the document title so browser tabs/history show something useful.
+  // Document title
   useEffect(() => {
     if (!manifest || !effectiveGameId) {
       document.title = "unSCUMM Viewer";
       return;
     }
-    const gameEntry = manifest.games.find((g) => g.id === effectiveGameId);
-    const base = gameEntry ? `${gameEntry.title} · unSCUMM` : "unSCUMM Viewer";
-    document.title =
-      effectiveRoomId != null ? `Room ${effectiveRoomId} · ${base}` : base;
-  }, [manifest, effectiveGameId, effectiveRoomId]);
+    const g = manifest.games.find((x) => x.id === effectiveGameId);
+    const base = g ? `${g.title} · unSCUMM` : "unSCUMM Viewer";
+    if (route.view === "items" && effectiveSelectedId != null && itemIndex) {
+      const item = itemIndex.items[effectiveSelectedId];
+      const label = item?.name ?? `Item ${effectiveSelectedId}`;
+      document.title = `${label} · ${base}`;
+    } else if (route.view === "rooms" && effectiveSelectedId != null) {
+      document.title = `Room ${effectiveSelectedId} · ${base}`;
+    } else {
+      document.title = base;
+    }
+  }, [
+    manifest,
+    effectiveGameId,
+    effectiveSelectedId,
+    route.view,
+    itemIndex,
+  ]);
 
   const rooms: Room[] = useMemo(() => {
     if (!game) return [];
@@ -118,19 +177,19 @@ export default function App() {
   }
 
   const selectedGame = manifest.games.find((g) => g.id === effectiveGameId);
-  const selectedRoom =
-    game && effectiveRoomId != null
-      ? game.rooms[String(effectiveRoomId)]
-      : null;
-
   const onPickRoom = (roomId: number) => {
-    if (!effectiveGameId) return;
-    navigate(buildRoute(effectiveGameId, roomId));
+    if (effectiveGameId)
+      navigate(buildRoute(effectiveGameId, "rooms", roomId));
   };
-
+  const onPickItem = (itemId: number) => {
+    if (effectiveGameId)
+      navigate(buildRoute(effectiveGameId, "items", itemId));
+  };
   const onPickGame = (gameId: string) => {
-    // Clear the room so the new game's first room is picked by defaulting.
-    navigate(buildRoute(gameId, null));
+    navigate(buildRoute(gameId, route.view, null));
+  };
+  const onSwitchView = (view: View) => {
+    if (effectiveGameId) navigate(buildRoute(effectiveGameId, view, null));
   };
 
   return (
@@ -151,6 +210,20 @@ export default function App() {
             ))}
           </select>
         )}
+        <div className="view-toggle">
+          <button
+            className={route.view === "rooms" ? "active" : ""}
+            onClick={() => onSwitchView("rooms")}
+          >
+            Rooms
+          </button>
+          <button
+            className={route.view === "items" ? "active" : ""}
+            onClick={() => onSwitchView("items")}
+          >
+            Items{itemIndex ? ` (${itemIndex.ordered.length})` : ""}
+          </button>
+        </div>
         {selectedGame ? (
           <span className="stat">
             SCUMM v{selectedGame.scumm_version} · {selectedGame.rooms} rooms ·{" "}
@@ -161,18 +234,40 @@ export default function App() {
 
       {!game ? (
         <div className="loading">Loading {selectedGame?.title}…</div>
+      ) : route.view === "items" && itemIndex ? (
+        <div className="layout">
+          <ItemList
+            items={itemIndex}
+            selectedItemId={effectiveSelectedId}
+            onSelect={onPickItem}
+          />
+          {effectiveSelectedId != null &&
+          itemIndex.items[effectiveSelectedId] ? (
+            <ItemDetails
+              item={itemIndex.items[effectiveSelectedId]}
+              roomLabels={roomLabels}
+              onNavigateRoom={onPickRoom}
+              onNavigateItem={onPickItem}
+            />
+          ) : (
+            <div className="empty">No items extracted from this game.</div>
+          )}
+        </div>
       ) : (
         <div className="layout">
           <RoomList
             rooms={rooms}
-            selectedRoomId={effectiveRoomId}
+            selectedRoomId={effectiveSelectedId}
+            roomLabels={roomLabels}
             onSelect={onPickRoom}
           />
-          {selectedRoom && effectiveGameId ? (
+          {effectiveSelectedId != null &&
+          game.rooms[String(effectiveSelectedId)] &&
+          effectiveGameId ? (
             <RoomDetails
               gameId={effectiveGameId}
-              room={selectedRoom}
-              allRooms={game.rooms}
+              room={game.rooms[String(effectiveSelectedId)]}
+              roomLabels={roomLabels}
               onNavigate={onPickRoom}
             />
           ) : (

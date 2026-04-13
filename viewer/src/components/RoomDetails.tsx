@@ -6,11 +6,16 @@ import { InteractionsPanel } from "./InteractionsPanel";
 interface Props {
   gameId: string;
   room: Room;
-  allRooms: Record<string, Room>;
+  roomLabels: Record<number, string | null>;
   onNavigate: (id: number) => void;
 }
 
-export function RoomDetails({ gameId, room, allRooms, onNavigate }: Props) {
+export function RoomDetails({
+  gameId,
+  room,
+  roomLabels,
+  onNavigate,
+}: Props) {
   const [selectedObjectId, setSelectedObjectId] = useState<number | null>(
     null,
   );
@@ -33,6 +38,14 @@ export function RoomDetails({ gameId, room, allRooms, onNavigate }: Props) {
       <header>
         <h2>
           Room {room.room_id}
+          {roomLabels[room.room_id] ? (
+            <span
+              className="room-hint"
+              title="Synthesised label: most distinctive named object in the room (SCUMM v6 doesn't store human-readable room names)"
+            >
+              · {roomLabels[room.room_id]}
+            </span>
+          ) : null}
           <span className="dims">
             {room.width} × {room.height}
           </span>
@@ -73,8 +86,7 @@ export function RoomDetails({ gameId, room, allRooms, onNavigate }: Props) {
         ) : (
           <ul className="transitions">
             {room.transitions.map((target) => {
-              const targetRoom = allRooms[String(target)];
-              const name = targetRoom?.objects.find((o) => o.name)?.name;
+              const name = roomLabels[target];
               return (
                 <li key={target}>
                   <button onClick={() => onNavigate(target)}>
