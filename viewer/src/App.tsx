@@ -6,14 +6,18 @@ import { ItemList } from "./components/ItemList";
 import { ItemDetails } from "./components/ItemDetails";
 import { SceneGraph } from "./components/SceneGraph";
 import { GraphRoomPanel } from "./components/GraphRoomPanel";
+import { VerbList } from "./components/VerbList";
+import { VerbDetails } from "./components/VerbDetails";
+import { buildVerbIndex } from "./verbIndex";
 import { useLocation } from "./useLocation";
 import { buildItemIndex } from "./itemIndex";
 import { buildRoomLabels } from "./roomLabels";
+import { buildRoomDegrees } from "./roomCategory";
 import "./App.css";
 
 const BASE = import.meta.env.BASE_URL;
 
-type View = "rooms" | "items" | "graph";
+type View = "rooms" | "items" | "graph" | "verbs";
 
 interface Route {
   gameId: string | null;
@@ -25,6 +29,8 @@ const ROOM_RE = /^\/games\/([^/]+)\/rooms\/(\d+)\/?$/;
 const ROOMS_RE = /^\/games\/([^/]+)\/rooms\/?$/;
 const ITEM_RE = /^\/games\/([^/]+)\/items\/(\d+)\/?$/;
 const ITEMS_RE = /^\/games\/([^/]+)\/items\/?$/;
+const VERB_RE = /^\/games\/([^/]+)\/verbs\/(\d+)\/?$/;
+const VERBS_RE = /^\/games\/([^/]+)\/verbs\/?$/;
 const GRAPH_RE = /^\/games\/([^/]+)\/graph(?:\/(\d+))?\/?$/;
 const GAME_RE = /^\/games\/([^/]+)\/?$/;
 
@@ -41,6 +47,12 @@ function parseRoute(path: string): Route {
   }
   if ((m = ITEMS_RE.exec(path))) {
     return { gameId: m[1], view: "items", selectedId: null };
+  }
+  if ((m = VERB_RE.exec(path))) {
+    return { gameId: m[1], view: "verbs", selectedId: Number(m[2]) };
+  }
+  if ((m = VERBS_RE.exec(path))) {
+    return { gameId: m[1], view: "verbs", selectedId: null };
   }
   if ((m = GRAPH_RE.exec(path))) {
     return {
@@ -61,7 +73,13 @@ function buildRoute(
   selectedId: number | null,
 ): string {
   const segment =
-    view === "items" ? "items" : view === "graph" ? "graph" : "rooms";
+    view === "items"
+      ? "items"
+      : view === "graph"
+        ? "graph"
+        : view === "verbs"
+          ? "verbs"
+          : "rooms";
   if (view === "graph") {
     return selectedId != null
       ? `/games/${gameId}/graph/${selectedId}`
@@ -114,8 +132,16 @@ export default function App() {
     () => (game ? buildItemIndex(game) : null),
     [game],
   );
+  const verbIndex = useMemo(
+    () => (game ? buildVerbIndex(game) : null),
+    [game],
+  );
   const roomLabels = useMemo(
     () => (game ? buildRoomLabels(game) : {}),
+    [game],
+  );
+  const roomDegrees = useMemo(
+    () => (game ? buildRoomDegrees(game) : {}),
     [game],
   );
 
@@ -133,6 +159,16 @@ export default function App() {
       );
       return sorted[0] != null ? Number(sorted[0]) : null;
     }
+    if (route.view === "verbs") {
+      if (!verbIndex) return null;
+      if (
+        route.selectedId != null &&
+        verbIndex.verbs[route.selectedId] != null
+      ) {
+        return route.selectedId;
+      }
+      return verbIndex.ordered[0] ?? null;
+    }
     // items
     if (!itemIndex) return null;
     if (
@@ -142,7 +178,7 @@ export default function App() {
       return route.selectedId;
     }
     return itemIndex.ordered[0] ?? null;
-  }, [game, itemIndex, route.view, route.selectedId]);
+  }, [game, itemIndex, verbIndex, route.view, route.selectedId]);
 
   // Canonicalize the URL when defaults kick in.
   useEffect(() => {
@@ -244,6 +280,12 @@ export default function App() {
             Items{itemIndex ? ` (${itemIndex.ordered.length})` : ""}
           </button>
           <button
+            className={route.view === "verbs" ? "active" : ""}
+            onClick={() => onSwitchView("verbs")}
+          >
+            Verbs{verbIndex ? ` (${verbIndex.ordered.length})` : ""}
+          </button>
+          <button
             className={route.view === "graph" ? "active" : ""}
             onClick={() => onSwitchView("graph")}
           >
@@ -279,6 +321,7 @@ export default function App() {
               gameId={effectiveGameId}
               room={game.rooms[String(effectiveSelectedId)]}
               roomLabels={roomLabels}
+              degree={roomDegrees[effectiveSelectedId]}
               onSelectRoom={(id) =>
                 navigate(buildRoute(effectiveGameId, "graph", id))
               }
@@ -290,6 +333,27 @@ export default function App() {
               }
             />
           ) : null}
+        </div>
+      ) : route.view === "verbs" && verbIndex ? (
+        <div className="layout">
+          <VerbList
+            verbs={verbIndex}
+            selectedVerbId={effectiveSelectedId}
+            onSelect={(id) =>
+              effectiveGameId &&
+              navigate(buildRoute(effectiveGameId, "verbs", id))
+            }
+          />
+          {effectiveSelectedId != null &&
+          verbIndex.verbs[effectiveSelectedId] ? (
+            <VerbDetails
+              verb={verbIndex.verbs[effectiveSelectedId]}
+              roomLabels={roomLabels}
+              onNavigateRoom={onPickRoom}
+            />
+          ) : (
+            <div className="empty">No verbs found.</div>
+          )}
         </div>
       ) : route.view === "items" && itemIndex ? (
         <div className="layout">

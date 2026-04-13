@@ -1,9 +1,15 @@
 import type { Room } from "../types";
+import {
+  categoryDescription,
+  categoryLabel,
+  type RoomDegree,
+} from "../roomCategory";
 
 interface Props {
   gameId: string;
   room: Room;
   roomLabels: Record<number, string | null>;
+  degree: RoomDegree | undefined;
   onSelectRoom: (id: number) => void;
   onOpenInRooms: (id: number) => void;
   onClose: () => void;
@@ -18,6 +24,7 @@ export function GraphRoomPanel({
   gameId,
   room,
   roomLabels,
+  degree,
   onSelectRoom,
   onOpenInRooms,
   onClose,
@@ -46,6 +53,18 @@ export function GraphRoomPanel({
           ×
         </button>
       </header>
+
+      {degree ? (
+        <div
+          className={`graph-panel-cat cat-${degree.category}`}
+          title={categoryDescription(degree.category)}
+        >
+          {categoryLabel(degree.category)}{" "}
+          <span className="graph-panel-cat-deg">
+            ({degree.in} in / {degree.out} out)
+          </span>
+        </div>
+      ) : null}
 
       <div className="graph-panel-thumb">
         <img src={bgUrl} alt={`Room ${room.room_id} background`} />

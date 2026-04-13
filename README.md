@@ -68,12 +68,13 @@ python scripts/build_game.py \
 
 This produces:
 
-- `data/<id>/parsed.json` — parsed rooms, objects, scripts, transitions
+- `data/<id>/parsed.json` — parsed rooms, objects, scripts, transitions, per-verb interactions, verb-name map
 - `viewer/public/games/<id>/rooms/room_N.png` — extracted room backgrounds
+- `viewer/public/games/<id>/objects/obj_N_S.png` — extracted object sprites (one per state variant)
 - `viewer/public/games/<id>/parsed.json` — symlink into the viewer's public tree
 - `viewer/public/games.json` — upserted manifest entry
 
-Pass `--skip-backgrounds` when iterating on the parser to avoid the slow nutcracker extraction step.
+Pass `--skip-backgrounds` when iterating on the parser to skip the slow nutcracker extraction (backgrounds + sprites).
 
 Re-running the same command overwrites cleanly; adding a new game just means another invocation with a different `--id`.
 
@@ -84,7 +85,14 @@ cd viewer
 npm run dev
 ```
 
-The viewer loads `games.json`, presents a game selector when more than one game is registered, and shows each room's background with object hit zones overlaid and clickable exit transitions.
+The viewer loads `games.json`, presents a game selector when more than one game is registered, and offers four views (toggled in the header):
+
+- **Rooms** — scene map with object hit zones overlaid on the real game art; click an object to see its verbs, dialogue, effects, and preconditions
+- **Items** — for every object picked up or checked anywhere, cross-references to every script that acquires it, requires it, or changes its state
+- **Verbs** — for every verb id seen in scripts, effect-type breakdown, sample dialogue, and a filterable list of all its implementations across objects
+- **Graph** — force-directed scene graph coloured by node category (hub / terminal / dead-end / orphan). Click a node to open a side panel with the room's thumbnail, metadata, exits, and a "open in Rooms view" button.
+
+All views are deep-linkable: `/games/<id>/rooms/<n>`, `/games/<id>/items/<n>`, `/games/<id>/verbs/<n>`, `/games/<id>/graph/<n>` — back/forward browser buttons work and document titles reflect the current selection.
 
 ## CLI (parser only)
 
@@ -100,20 +108,51 @@ python -m scumm_deconstruct \
 
 ## Current status
 
+**Parser / analyser**
+
 - ✅ SCUMM v6 chunk parsing (rooms, objects, verb tables, scripts)
-- ✅ v6 bytecode analyzer with symbolic stack model
+- ✅ v6 bytecode analyser with symbolic stack model
   - room transitions (`loadRoom`, `loadRoomWithEgo`)
   - inline dialogue / narration (print & talk opcodes, handling 0xFF/0xFE escapes)
   - effects (`pickupObject`, `setState`, `setOwner`, `startScript`, `startObject`)
   - preconditions (`owns(obj)`, `state(obj) == N`, `classOfIs`)
 - ✅ Per-verb interaction extraction (dialogue + effects + preconditions per verb on every object)
-- ✅ Per-room background extraction via nutcracker
-- ✅ React viewer with room list, interactive scene map, clickable exits, per-object interactions panel, URL-based routing
-- ⬜ Cross-room item dependency graph (where each item is picked up vs. where it's required)
-- ⬜ Verb-name extraction from `verbOps` scripts (today the UI shows numeric verb IDs)
-- ⬜ Scene-graph visualisation (Mermaid/Graphviz/force-directed)
+- ✅ Verb-name extraction from `verbOps SO_VERB_INIT` + `SO_VERB_NAME`, aggregated game-wide
+- ✅ Font-ligature substitution (DOTT's 0xB0="oo", 0xB8="ll" render as real text)
 
-Tested against **Day of the Tentacle** (SCUMM v6):
-- 89 rooms, 744 objects, 137 room transitions
-- 2,568 lines of in-game dialogue extracted
-- 1,301 object-state effects, 204 inventory/state preconditions
+**Asset extraction**
+
+- ✅ Per-room backgrounds via nutcracker (one PNG per room)
+- ✅ Per-object sprites via nutcracker (one PNG per object × state variant)
+
+**Viewer**
+
+- ✅ Rooms view — scene map with hit-zone overlays, per-object interactions panel, clickable exits, object sprite thumbnails
+- ✅ Items view — cross-references (acquired-in / required-by / state-changed-at) derived from the script analysis
+- ✅ Verbs view — verb-object interaction matrix with effect breakdown, sample dialogue, filterable implementation list
+- ✅ Graph view — force-directed scene graph with node categorisation (hub / terminal-candidate / dead-end / orphan) and side panel
+- ✅ Deep-linkable URLs + browser back/forward, smart synthesised room labels (frequency-based), multi-game manifest
+
+**Not done / on deck**
+
+- ⬜ Cross-room item dependency *graph* (today: list-based cross-refs in Items view; next: a visual puzzle-flow graph)
+- ⬜ CHAR font resource parsing (today: hand-curated 2-entry ligature map)
+- ⬜ Walkbox overlays on the scene map
+- ⬜ Multi-state sprite preview tied to `setState` effects
+- ⬜ Validation against a second SCUMM game (MI2 / Sam & Max) to surface format differences
+
+**Measured against Day of the Tentacle** (SCUMM v6):
+
+| Extraction | Count |
+|---|---:|
+| Rooms | 89 |
+| Objects | 744 |
+| Room transitions | 137 |
+| Named verbs (from `verbOps`) | 16 |
+| Distinct verb ids used on objects | 57 |
+| Per-verb implementations | 2,500+ |
+| Dialogue lines | 2,568 |
+| Object-state effects | 1,301 |
+| Inventory / state preconditions | 204 |
+| Room background PNGs | 89 |
+| Object sprites | 645 |

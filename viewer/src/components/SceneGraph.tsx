@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -10,6 +10,12 @@ import "reactflow/dist/style.css";
 
 import type { GameData } from "../types";
 import { forceLayout } from "../forceLayout";
+import {
+  buildRoomDegrees,
+  categoryDescription,
+  categoryLabel,
+  type RoomCategory,
+} from "../roomCategory";
 
 interface Props {
   game: GameData;
@@ -18,13 +24,57 @@ interface Props {
   onSelectRoom: (id: number) => void;
 }
 
+interface CategoryStyle {
+  bg: string;
+  border: string;
+  color: string;
+  opacity?: number;
+}
+
+const CATEGORY_STYLE: Record<RoomCategory, CategoryStyle> = {
+  hub: {
+    bg: "rgba(78, 201, 176, 0.18)",
+    border: "var(--named)",
+    color: "var(--text-hi)",
+  },
+  terminal: {
+    bg: "rgba(212, 162, 86, 0.22)",
+    border: "#e6b96a",
+    color: "var(--text-hi)",
+  },
+  "dead-end": {
+    bg: "rgba(40, 42, 50, 0.6)",
+    border: "rgba(110, 113, 125, 0.5)",
+    color: "rgba(180, 183, 195, 0.7)",
+    opacity: 0.55,
+  },
+  orphan: {
+    bg: "rgba(28, 30, 38, 0.5)",
+    border: "rgba(80, 83, 95, 0.4)",
+    color: "rgba(140, 143, 155, 0.5)",
+    opacity: 0.35,
+  },
+  normal: {
+    bg: "var(--panel-hi)",
+    border: "var(--border)",
+    color: "var(--text)",
+  },
+};
+
+const SELECTED_STYLE: CategoryStyle = {
+  bg: "var(--accent-dim)",
+  border: "var(--accent)",
+  color: "var(--text-hi)",
+};
+
 export function SceneGraph({
   game,
   roomLabels,
   selectedRoomId,
   onSelectRoom,
 }: Props) {
-  // Compute layout once per game (re-runs only if rooms change).
+  const degrees = useMemo(() => buildRoomDegrees(game), [game]);
+
   const positions = useMemo(() => {
     const ids = Object.values(game.rooms).map((r) => r.room_id);
     const edges: { source: number; target: number }[] = [];
@@ -33,23 +83,32 @@ export function SceneGraph({
         edges.push({ source: room.room_id, target: t });
       }
     }
-    // Treat the most-connected rooms as hubs so they pull toward the centre.
-    const degree = new Map<number, number>();
-    for (const e of edges) {
-      degree.set(e.source, (degree.get(e.source) ?? 0) + 1);
-      degree.set(e.target, (degree.get(e.target) ?? 0) + 1);
-    }
-    const sorted = [...degree.entries()].sort((a, b) => b[1] - a[1]);
-    const hubs = new Set(sorted.slice(0, 3).map(([id]) => id));
+    const hubs = new Set(
+      Object.values(game.rooms)
+        .filter((r) => degrees[r.room_id]?.category === "hub")
+        .map((r) => r.room_id),
+    );
     return forceLayout(ids, edges, { hubs });
-  }, [game]);
+  }, [game, degrees]);
 
   const nodes: RFNode[] = useMemo(() => {
     return Object.values(game.rooms).map((room) => {
       const pos = positions[room.room_id] ?? { x: 0, y: 0 };
       const label = roomLabels[room.room_id];
+      const deg = degrees[room.room_id];
       const isSelected = room.room_id === selectedRoomId;
-      const isolated = room.transitions.length === 0;
+      const style = isSelected ? SELECTED_STYLE : CATEGORY_STYLE[deg.category];
+      const opacity = !isSelected && style.opacity != null ? style.opacity : 1;
+      const nodeStyle: CSSProperties = {
+        background: style.bg,
+        color: style.color,
+        border: `1px solid ${style.border}`,
+        borderRadius: 4,
+        padding: 4,
+        fontSize: 11,
+        width: 110,
+        opacity,
+      };
       return {
         id: String(room.room_id),
         position: pos,
@@ -57,28 +116,15 @@ export function SceneGraph({
           label: (
             <div className="graph-node-content">
               <div className="graph-node-id">{room.room_id}</div>
-              {label ? (
-                <div className="graph-node-label">{label}</div>
-              ) : null}
+              {label ? <div className="graph-node-label">{label}</div> : null}
             </div>
           ),
         },
-        style: {
-          background: isSelected
-            ? "var(--accent-dim)"
-            : isolated
-              ? "rgba(60, 62, 70, 0.7)"
-              : "var(--panel-hi)",
-          color: isSelected ? "var(--text-hi)" : "var(--text)",
-          border: `1px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
-          borderRadius: 4,
-          padding: 4,
-          fontSize: 11,
-          width: 110,
-        },
+        style: nodeStyle,
+        title: `${categoryLabel(deg.category)} — ${deg.in} in / ${deg.out} out\n${categoryDescription(deg.category)}`,
       };
     });
-  }, [game, positions, roomLabels, selectedRoomId]);
+  }, [game, positions, roomLabels, selectedRoomId, degrees]);
 
   const edges: RFEdge[] = useMemo(() => {
     const out: RFEdge[] = [];
@@ -100,6 +146,19 @@ export function SceneGraph({
     return out;
   }, [game]);
 
+  // Tally each category for the legend.
+  const tallies = useMemo(() => {
+    const t: Record<RoomCategory, number> = {
+      hub: 0,
+      terminal: 0,
+      "dead-end": 0,
+      orphan: 0,
+      normal: 0,
+    };
+    for (const d of Object.values(degrees)) t[d.category] += 1;
+    return t;
+  }, [degrees]);
+
   return (
     <div className="scene-graph">
       <ReactFlow
@@ -115,6 +174,25 @@ export function SceneGraph({
         <Background color="var(--border)" gap={32} />
         <Controls showInteractive={false} />
       </ReactFlow>
+      <div className="graph-legend">
+        <h4>Node categories</h4>
+        {(["hub", "terminal", "dead-end", "orphan", "normal"] as const).map(
+          (c) => (
+            <div className="graph-legend-row" key={c} title={categoryDescription(c)}>
+              <span
+                className="graph-legend-swatch"
+                style={{
+                  background: CATEGORY_STYLE[c].bg,
+                  borderColor: CATEGORY_STYLE[c].border,
+                  opacity: CATEGORY_STYLE[c].opacity ?? 1,
+                }}
+              />
+              <span className="graph-legend-label">{categoryLabel(c)}</span>
+              <span className="graph-legend-count">{tallies[c]}</span>
+            </div>
+          ),
+        )}
+      </div>
     </div>
   );
 }

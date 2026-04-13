@@ -133,6 +133,17 @@ class ScriptAnalysis:
 
 # ─── String decoding ─────────────────────────────────────────────────────────
 
+# DOTT (and likely other v6 LucasArts games) uses high-byte glyphs in the
+# verb-panel font as letter-pair ligatures.  The CHAR resource defines the
+# glyph bitmaps; we don't render those, so we substitute the pairs textually.
+# These bytes are uncommon in regular dialogue, so a global substitution is
+# safe even for games that don't use them.
+_FONT_LIGATURES: Dict[int, str] = {
+    0xB0: "oo",  # appears in "Look at"
+    0xB8: "ll",  # appears in "Pull"
+}
+
+
 def decode_string(data: bytes, offset: int) -> Tuple[str, int]:
     """Decode a null-terminated SCUMM string, handling 0xFF/0xFE escapes.
 
@@ -175,6 +186,8 @@ def decode_string(data: bytes, offset: int) -> Tuple[str, int]:
             chars.append(chr(b))
         elif b in (0x09, 0x0A, 0x0D):
             chars.append(chr(b))
+        elif b in _FONT_LIGATURES:
+            chars.append(_FONT_LIGATURES[b])
         else:
             # Extended characters (accents, curly quotes) — decode as Latin-1.
             chars.append(bytes([b]).decode("latin-1", errors="replace"))
