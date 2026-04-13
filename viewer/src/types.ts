@@ -40,6 +40,14 @@ export interface ScriptMeta {
   size: number;
 }
 
+export interface Walkbox {
+  index: number;
+  corners: [number, number][]; // 4 (x, y) pairs: UL, UR, LR, LL
+  mask: number;
+  flags: number;
+  scale: number;
+}
+
 export interface Room {
   room_id: number;
   name: string | null;
@@ -48,6 +56,7 @@ export interface Room {
   num_objects: number;
   objects: ScummObject[];
   scripts: ScriptMeta[];
+  walkboxes: Walkbox[];
   transitions: number[];
 }
 

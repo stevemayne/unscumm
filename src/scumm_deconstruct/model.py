@@ -22,6 +22,25 @@ class VerbEntry:
 
 
 @dataclass
+class Walkbox:
+    """A single SCUMM walk-box: a quadrilateral the actor can stand on."""
+
+    index: int
+    # Four corners, in SCUMM order: upper-left, upper-right, lower-right, lower-left.
+    ulx: int
+    uly: int
+    urx: int
+    ury: int
+    lrx: int
+    lry: int
+    llx: int
+    lly: int
+    mask: int = 0
+    flags: int = 0
+    scale: int = 0
+
+
+@dataclass
 class ScriptData:
     """Metadata for a script block (entry, exit, local, or global)."""
 
@@ -60,6 +79,7 @@ class Room:
     objects: List[ScummObject] = field(default_factory=list)
     transitions: List[int] = field(default_factory=list)
     scripts: List[ScriptData] = field(default_factory=list)
+    walkboxes: List[Walkbox] = field(default_factory=list)
 
 
 @dataclass
@@ -114,6 +134,21 @@ class GameData:
                             "size": s.size,
                         }
                         for s in room.scripts
+                    ],
+                    "walkboxes": [
+                        {
+                            "index": w.index,
+                            "corners": [
+                                [w.ulx, w.uly],
+                                [w.urx, w.ury],
+                                [w.lrx, w.lry],
+                                [w.llx, w.lly],
+                            ],
+                            "mask": w.mask,
+                            "flags": w.flags,
+                            "scale": w.scale,
+                        }
+                        for w in room.walkboxes
                     ],
                     "transitions": room.transitions,
                 }

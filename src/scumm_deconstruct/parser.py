@@ -3,7 +3,7 @@ import struct
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .model import GameData, Room, ScriptData, ScummObject, VerbEntry
+from .model import GameData, Room, ScriptData, ScummObject, VerbEntry, Walkbox
 from .script import analyze_script
 
 
@@ -196,6 +196,8 @@ class ScummParser:
                 room.width, room.height, room.num_objects = struct.unpack_from(
                     "<HHH", chunk_data, 0
                 )
+            elif tag == "BOXD":
+                room.walkboxes = self._parse_boxd(chunk_data)
             elif tag == "OBCD":
                 obj = self._parse_obcd(chunk_data, room.room_id)
                 if obj:
@@ -297,6 +299,45 @@ class ScummParser:
         obj.parent = data[11]
         if len(data) >= 17:
             obj.actor_dir = data[16]
+
+    def _parse_boxd(self, data: bytes) -> List[Walkbox]:
+        """Parse a BOXD chunk into a list of Walkbox records.
+
+        v6 layout:
+          uint16 numBoxes
+          numBoxes * 20 bytes per box:
+            8 × int16 LE   (corners: ulx, uly, urx, ury, lrx, lry, llx, lly)
+            uint8 mask
+            uint8 flags
+            uint16 scale
+        Box 0 in many SCUMM games is a sentinel with corners at (-32000, …);
+        we keep it in the list with index=0 so the matrix indexing stays correct,
+        but the viewer can filter it out by detecting impossibly-large coordinates.
+        """
+        if len(data) < 2:
+            return []
+        num = struct.unpack_from("<H", data, 0)[0]
+        out: List[Walkbox] = []
+        offset = 2
+        for i in range(num):
+            if offset + 20 > len(data):
+                break
+            corners = struct.unpack_from("<8h", data, offset)
+            mask = data[offset + 16]
+            flags = data[offset + 17]
+            scale = struct.unpack_from("<H", data, offset + 18)[0]
+            out.append(
+                Walkbox(
+                    index=i,
+                    ulx=corners[0], uly=corners[1],
+                    urx=corners[2], ury=corners[3],
+                    lrx=corners[4], lry=corners[5],
+                    llx=corners[6], lly=corners[7],
+                    mask=mask, flags=flags, scale=scale,
+                )
+            )
+            offset += 20
+        return out
 
     def _parse_verb_table(self, data: bytes) -> List[VerbEntry]:
         """Parse verb entries into offsets within the VERB chunk data.

@@ -635,6 +635,45 @@
   stroke-dasharray: none;
 }
 
+.room-map-toggles {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+
+.room-map-toggles label {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.room-map-toggles input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.room-map-toggles label:has(input:disabled) {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.room-map .walkbox {
+  fill: rgba(78, 201, 176, 0.15);
+  stroke: var(--named);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  pointer-events: all;
+  transition: fill 0.1s;
+}
+
+.room-map .walkbox:hover {
+  fill: rgba(78, 201, 176, 0.4);
+  stroke: #fff;
+}
+
 .hover-label {
   font-family: ui-monospace, Menlo, monospace;
   font-size: 12px;
@@ -800,6 +839,115 @@
 .verb-sample-line {
   color: var(--text);
   font-style: italic;
+}
+
+/* --- Search view ------------------------------------------------------- */
+
+.search-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 16px 24px;
+}
+
+.search-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.search-header input {
+  flex: 1;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-hi);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+.search-header input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.search-stats {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.search-results {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-result {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--named);
+  border-radius: 3px;
+  padding: 8px 12px;
+}
+
+.search-result:hover {
+  background: var(--panel-hi);
+  border-left-color: var(--accent);
+}
+
+.search-result-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.search-result-room {
+  color: var(--accent);
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.search-result-roomname {
+  color: var(--text-hi);
+}
+
+.search-result-obj {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.search-result-verb {
+  color: var(--named);
+}
+
+.search-result-sep {
+  color: var(--text-dim);
+}
+
+.search-result-line {
+  color: var(--text);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.search-result-line mark {
+  background: rgba(212, 162, 86, 0.4);
+  color: var(--text-hi);
+  padding: 0 1px;
+  border-radius: 2px;
 }
 
 .objects tr {

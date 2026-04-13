@@ -9,6 +9,8 @@ import { GraphRoomPanel } from "./components/GraphRoomPanel";
 import { VerbList } from "./components/VerbList";
 import { VerbDetails } from "./components/VerbDetails";
 import { buildVerbIndex } from "./verbIndex";
+import { SearchView } from "./components/SearchView";
+import { buildDialogueIndex } from "./dialogueIndex";
 import { useLocation } from "./useLocation";
 import { buildItemIndex } from "./itemIndex";
 import { buildRoomLabels } from "./roomLabels";
@@ -17,7 +19,7 @@ import "./App.css";
 
 const BASE = import.meta.env.BASE_URL;
 
-type View = "rooms" | "items" | "graph" | "verbs";
+type View = "rooms" | "items" | "graph" | "verbs" | "search";
 
 interface Route {
   gameId: string | null;
@@ -31,6 +33,7 @@ const ITEM_RE = /^\/games\/([^/]+)\/items\/(\d+)\/?$/;
 const ITEMS_RE = /^\/games\/([^/]+)\/items\/?$/;
 const VERB_RE = /^\/games\/([^/]+)\/verbs\/(\d+)\/?$/;
 const VERBS_RE = /^\/games\/([^/]+)\/verbs\/?$/;
+const SEARCH_RE = /^\/games\/([^/]+)\/search\/?$/;
 const GRAPH_RE = /^\/games\/([^/]+)\/graph(?:\/(\d+))?\/?$/;
 const GAME_RE = /^\/games\/([^/]+)\/?$/;
 
@@ -53,6 +56,9 @@ function parseRoute(path: string): Route {
   }
   if ((m = VERBS_RE.exec(path))) {
     return { gameId: m[1], view: "verbs", selectedId: null };
+  }
+  if ((m = SEARCH_RE.exec(path))) {
+    return { gameId: m[1], view: "search", selectedId: null };
   }
   if ((m = GRAPH_RE.exec(path))) {
     return {
@@ -79,11 +85,17 @@ function buildRoute(
         ? "graph"
         : view === "verbs"
           ? "verbs"
-          : "rooms";
+          : view === "search"
+            ? "search"
+            : "rooms";
   if (view === "graph") {
     return selectedId != null
       ? `/games/${gameId}/graph/${selectedId}`
       : `/games/${gameId}/graph`;
+  }
+  if (view === "search") {
+    // Search uses a query-string param, no selectedId in path.
+    return `/games/${gameId}/search`;
   }
   return selectedId != null
     ? `/games/${gameId}/${segment}/${selectedId}`
@@ -91,8 +103,9 @@ function buildRoute(
 }
 
 export default function App() {
-  const { path, navigate } = useLocation();
+  const { path, navigate, query } = useLocation();
   const route = parseRoute(path);
+  const searchQuery = query("q") ?? "";
 
   const [manifest, setManifest] = useState<GamesManifest | null>(null);
   const [game, setGame] = useState<GameData | null>(null);
@@ -134,6 +147,10 @@ export default function App() {
   );
   const verbIndex = useMemo(
     () => (game ? buildVerbIndex(game) : null),
+    [game],
+  );
+  const dialogueIndex = useMemo(
+    () => (game ? buildDialogueIndex(game) : null),
     [game],
   );
   const roomLabels = useMemo(
@@ -183,8 +200,13 @@ export default function App() {
   // Canonicalize the URL when defaults kick in.
   useEffect(() => {
     if (!effectiveGameId) return;
-    // Graph view is fine without a selected room (the graph is the focus).
-    if (effectiveSelectedId == null && route.view !== "graph") return;
+    // Graph and Search views are fine without a selected room.
+    if (
+      effectiveSelectedId == null &&
+      route.view !== "graph" &&
+      route.view !== "search"
+    )
+      return;
     const target = buildRoute(effectiveGameId, route.view, effectiveSelectedId);
     if (target !== path) {
       navigate(target, { replace: true });
@@ -291,6 +313,12 @@ export default function App() {
           >
             Graph
           </button>
+          <button
+            className={route.view === "search" ? "active" : ""}
+            onClick={() => onSwitchView("search")}
+          >
+            Search
+          </button>
         </div>
         {selectedGame ? (
           <span className="stat">
@@ -302,6 +330,22 @@ export default function App() {
 
       {!game ? (
         <div className="loading">Loading {selectedGame?.title}…</div>
+      ) : route.view === "search" && dialogueIndex && effectiveGameId ? (
+        <SearchView
+          index={dialogueIndex}
+          initialQuery={searchQuery}
+          roomLabels={roomLabels}
+          verbNames={game.verb_names ?? {}}
+          onQueryChange={(q) => {
+            // Use replaceState so each keystroke doesn't add history entries.
+            const path = `/games/${effectiveGameId}/search`;
+            navigate(
+              q ? `${path}?q=${encodeURIComponent(q)}` : path,
+              { replace: true },
+            );
+          }}
+          onNavigateRoom={onPickRoom}
+        />
       ) : route.view === "graph" ? (
         <div className="graph-layout">
           <SceneGraph
