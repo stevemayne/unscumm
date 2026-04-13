@@ -1,0 +1,2 @@
+nutcracker>=0.1.0
+networkx>=3.0

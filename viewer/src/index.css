@@ -1,0 +1,51 @@
+:root {
+  --bg: #16171d;
+  --panel: #1c1e26;
+  --panel-hi: #252834;
+  --border: #2e303a;
+  --text: #c9cad2;
+  --text-dim: #8a8d99;
+  --text-hi: #f3f4f6;
+  --accent: #a678ff;
+  --accent-dim: #6b4ea8;
+  --named: #4ec9b0;
+  --named-hover: #79e4c8;
+
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3 {
+  color: var(--text-hi);
+  font-weight: 500;
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--panel-hi);
+  border-color: var(--accent-dim);
+}

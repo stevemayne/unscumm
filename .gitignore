@@ -1,0 +1,7 @@
+# Ignore raw SCUMM game files and extracted game assets
+
+games/
+data/
+.DS_Store
+Thumbs.db
+*.pyc

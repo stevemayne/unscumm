@@ -1,0 +1,11 @@
+{
+  "games": [
+    {
+      "id": "day_of_the_tentacle",
+      "title": "Day of the Tentacle",
+      "scumm_version": 6,
+      "rooms": 89,
+      "objects": 744
+    }
+  ]
+}

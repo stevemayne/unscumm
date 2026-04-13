@@ -1,0 +1,62 @@
+// TypeScript types mirroring scumm_deconstruct.model.GameData.dict() output.
+
+export interface VerbEntry {
+  verb_id: number;
+  offset: number;
+}
+
+export interface ScummObject {
+  object_id: number;
+  name: string | null;
+  room_id: number | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  verbs: VerbEntry[];
+}
+
+export interface ScriptMeta {
+  script_type: "entry" | "exit" | "local" | "global" | "verb";
+  index: number | null;
+  size: number;
+}
+
+export interface Room {
+  room_id: number;
+  name: string | null;
+  width: number;
+  height: number;
+  num_objects: number;
+  objects: ScummObject[];
+  scripts: ScriptMeta[];
+  transitions: number[];
+}
+
+export interface GlobalObjectInfo {
+  object_id: number;
+  name: string | null;
+  room_id: number | null;
+  owner: number | null;
+  state: number | null;
+  class_data: number;
+}
+
+export interface GameData {
+  source: string;
+  chunks: { tag: string; size: number; offset: number }[];
+  rooms: Record<string, Room>;
+  objects: Record<string, GlobalObjectInfo>;
+}
+
+export interface GameManifestEntry {
+  id: string;
+  title: string;
+  scumm_version: number;
+  rooms: number;
+  objects: number;
+}
+
+export interface GamesManifest {
+  games: GameManifestEntry[];
+}
