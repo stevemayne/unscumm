@@ -4,16 +4,19 @@ import type { Room } from "../types";
 interface Props {
   gameId: string;
   room: Room;
+  selectedObjectId: number | null;
+  onSelectObject: (objectId: number | null) => void;
 }
 
 /**
- * Renders the room as an SVG at its native aspect ratio, drawing each
- * object as a rectangle at its (x, y, width, height) position.  Named
- * objects get a subtle fill; unnamed ones (background hotspots) are
- * outlined only.  Hover to see the object's name.
+ * Room background + clickable object hit zones.  Named objects get a
+ * teal outline; unnamed hotspots a dashed purple outline.  Hovering
+ * shows details; clicking selects an object so its verbs render in the
+ * interactions panel.
  */
-export function RoomMap({ gameId, room }: Props) {
+export function RoomMap({ gameId, room, selectedObjectId, onSelectObject }: Props) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const displayId = hovered ?? selectedObjectId;
 
   return (
     <div className="room-map">
@@ -32,44 +35,54 @@ export function RoomMap({ gameId, room }: Props) {
         />
         {room.objects.map((o) => {
           const isHovered = hovered === o.object_id;
+          const isSelected = selectedObjectId === o.object_id;
           return (
-            <g key={o.object_id}>
-              <rect
-                x={o.x}
-                y={o.y}
-                width={Math.max(o.width, 2)}
-                height={Math.max(o.height, 2)}
-                className={
-                  "obj" +
-                  (o.name ? " named" : "") +
-                  (isHovered ? " hovered" : "")
-                }
-                onMouseEnter={() => setHovered(o.object_id)}
-                onMouseLeave={() => setHovered(null)}
-              >
-                <title>
-                  #{o.object_id} {o.name ?? "(unnamed)"}
-                </title>
-              </rect>
-            </g>
+            <rect
+              key={o.object_id}
+              x={o.x}
+              y={o.y}
+              width={Math.max(o.width, 2)}
+              height={Math.max(o.height, 2)}
+              className={
+                "obj" +
+                (o.name ? " named" : "") +
+                (isHovered ? " hovered" : "") +
+                (isSelected ? " selected" : "")
+              }
+              onMouseEnter={() => setHovered(o.object_id)}
+              onMouseLeave={() => setHovered(null)}
+              onClick={() =>
+                onSelectObject(isSelected ? null : o.object_id)
+              }
+            >
+              <title>
+                #{o.object_id} {o.name ?? "(unnamed)"}
+              </title>
+            </rect>
           );
         })}
       </svg>
-      {hovered != null ? (
+      {displayId != null ? (
         <div className="hover-label">
           {(() => {
-            const o = room.objects.find((x) => x.object_id === hovered);
+            const o = room.objects.find((x) => x.object_id === displayId);
             if (!o) return null;
             return (
               <>
                 <strong>#{o.object_id}</strong>{" "}
-                {o.name ?? <em>(unnamed)</em>} — ({o.x},{o.y}) {o.width}×{o.height}
+                {o.name ?? <em>(unnamed)</em>} — ({o.x},{o.y}) {o.width}×
+                {o.height}
+                {o.verbs.length > 0 ? (
+                  <> · {o.verbs.length} verb(s)</>
+                ) : null}
               </>
             );
           })()}
         </div>
       ) : (
-        <div className="hover-label muted">hover over objects for details</div>
+        <div className="hover-label muted">
+          click an object to see its verbs
+        </div>
       )}
     </div>
   );

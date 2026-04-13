@@ -2,7 +2,7 @@
 
 A SCUMM reverse-engineering project for extracting scene topology, inventory provenance, and puzzle logic.
 
-![Day of the Tentacle scene map in the unSCUMM viewer](dott.png)
+![Day of the Tentacle scene map in the unSCUMM viewer](dott2.png)
 
 ## Goal
 

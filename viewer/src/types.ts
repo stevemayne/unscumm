@@ -3,7 +3,25 @@
 export interface VerbEntry {
   verb_id: number;
   offset: number;
+  dialogue: string[];
+  effects: Effect[];
+  preconditions: Precondition[];
+  transitions: number[];
 }
+
+export type Effect =
+  | { type: "loadRoom"; room: number }
+  | { type: "loadRoomWithEgo"; room: number }
+  | { type: "pickupObject"; object: number }
+  | { type: "setState"; object: number; value: number }
+  | { type: "setOwner"; object: number; owner?: number }
+  | { type: "startScript"; script: number }
+  | { type: "startObject"; object: number };
+
+export type Precondition =
+  | { type: "owns"; object: number }
+  | { type: "state"; object: number; equals?: number }
+  | { type: "class"; object: number; classes: number[] };
 
 export interface ScummObject {
   object_id: number;

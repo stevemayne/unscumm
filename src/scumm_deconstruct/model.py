@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -15,6 +15,10 @@ class ChunkInfo:
 class VerbEntry:
     verb_id: int
     offset: int
+    dialogue: List[str] = field(default_factory=list)
+    effects: List[Dict] = field(default_factory=list)
+    preconditions: List[Dict] = field(default_factory=list)
+    transitions: List[int] = field(default_factory=list)
 
 
 @dataclass
@@ -89,7 +93,14 @@ class GameData:
                             "width": obj.width,
                             "height": obj.height,
                             "verbs": [
-                                {"verb_id": v.verb_id, "offset": v.offset}
+                                {
+                                    "verb_id": v.verb_id,
+                                    "offset": v.offset,
+                                    "dialogue": list(v.dialogue),
+                                    "effects": list(v.effects),
+                                    "preconditions": list(v.preconditions),
+                                    "transitions": list(v.transitions),
+                                }
                                 for v in obj.verbs
                             ],
                         }

@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import type { Room } from "../types";
 import { RoomMap } from "./RoomMap";
+import { InteractionsPanel } from "./InteractionsPanel";
 
 interface Props {
   gameId: string;
@@ -9,6 +11,20 @@ interface Props {
 }
 
 export function RoomDetails({ gameId, room, allRooms, onNavigate }: Props) {
+  const [selectedObjectId, setSelectedObjectId] = useState<number | null>(
+    null,
+  );
+
+  // Clear the selected object when the room changes.
+  useEffect(() => {
+    setSelectedObjectId(null);
+  }, [room.room_id]);
+
+  const selectedObject =
+    selectedObjectId != null
+      ? room.objects.find((o) => o.object_id === selectedObjectId) ?? null
+      : null;
+
   const namedObjects = room.objects.filter((o) => o.name);
   const unnamedCount = room.objects.length - namedObjects.length;
 
@@ -29,13 +45,31 @@ export function RoomDetails({ gameId, room, allRooms, onNavigate }: Props) {
 
       <section>
         <h3>Scene map</h3>
-        <RoomMap gameId={gameId} room={room} />
+        <RoomMap
+          gameId={gameId}
+          room={room}
+          selectedObjectId={selectedObjectId}
+          onSelectObject={setSelectedObjectId}
+        />
       </section>
+
+      {selectedObject ? (
+        <section>
+          <h3>Interactions</h3>
+          <InteractionsPanel
+            room={room}
+            object={selectedObject}
+            onNavigate={onNavigate}
+          />
+        </section>
+      ) : null}
 
       <section>
         <h3>Exits → {room.transitions.length}</h3>
         {room.transitions.length === 0 ? (
-          <p className="muted">No outgoing transitions discovered by static analysis.</p>
+          <p className="muted">
+            No outgoing transitions discovered by static analysis.
+          </p>
         ) : (
           <ul className="transitions">
             {room.transitions.map((target) => {
@@ -70,21 +104,30 @@ export function RoomDetails({ gameId, room, allRooms, onNavigate }: Props) {
               </tr>
             </thead>
             <tbody>
-              {namedObjects.map((o) => (
-                <tr key={o.object_id}>
-                  <td>{o.object_id}</td>
-                  <td>{o.name}</td>
-                  <td>
-                    ({o.x}, {o.y})
-                  </td>
-                  <td>
-                    {o.width} × {o.height}
-                  </td>
-                  <td className="verbs">
-                    {o.verbs.map((v) => v.verb_id).join(", ") || "—"}
-                  </td>
-                </tr>
-              ))}
+              {namedObjects.map((o) => {
+                const isSelected = o.object_id === selectedObjectId;
+                return (
+                  <tr
+                    key={o.object_id}
+                    className={isSelected ? "selected" : undefined}
+                    onClick={() =>
+                      setSelectedObjectId(isSelected ? null : o.object_id)
+                    }
+                  >
+                    <td>{o.object_id}</td>
+                    <td>{o.name}</td>
+                    <td>
+                      ({o.x}, {o.y})
+                    </td>
+                    <td>
+                      {o.width} × {o.height}
+                    </td>
+                    <td className="verbs">
+                      {o.verbs.map((v) => v.verb_id).join(", ") || "—"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

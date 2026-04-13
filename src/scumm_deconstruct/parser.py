@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from .model import GameData, Room, ScriptData, ScummObject, VerbEntry
-from .script import scan_transitions
+from .script import analyze_script, scan_transitions
 
 
 class ScummParser:
@@ -129,17 +129,20 @@ class ScummParser:
                     game_data.objects[obj_id].state = info["state"]
                     game_data.objects[obj_id].class_data = info["class_data"]
 
-        # Scan scripts for room transitions
+        # Aggregate room-level transitions from (a) non-verb scripts and
+        # (b) per-verb analyses on each object.
         max_room = max(game_data.rooms.keys()) if game_data.rooms else 0
         for room in game_data.rooms.values():
-            targets = set()
+            targets: set = set()
             for script in room.scripts:
                 raw = script.raw
                 # LSCR scripts have a 1-byte script number prefix
                 if script.script_type == "local" and raw:
                     raw = raw[1:]
                 targets.update(scan_transitions(raw, max_room=max_room))
-            # Don't include self-transitions unless it's the only target
+            for obj in room.objects:
+                for v in obj.verbs:
+                    targets.update(v.transitions)
             targets.discard(room.room_id)
             room.transitions = sorted(targets)
 
@@ -193,25 +196,6 @@ class ScummParser:
                 obj = self._parse_obcd(chunk_data, room.room_id)
                 if obj:
                     room.objects.append(obj)
-                    # Extract verb bytecode for transition scanning
-                    verb_raw = getattr(obj, "_verb_raw", None)
-                    if verb_raw:
-                        # Skip past verb table entries to reach the bytecode
-                        vi = 0
-                        while vi < len(verb_raw) and verb_raw[vi] != 0:
-                            vi += 3
-                        bytecode = verb_raw[vi + 1 :] if vi < len(verb_raw) else b""
-                        if bytecode:
-                            room.scripts.append(
-                                ScriptData(
-                                    script_type="verb",
-                                    index=obj.object_id,
-                                    offset=0,
-                                    size=len(bytecode),
-                                    raw=bytecode,
-                                )
-                            )
-                        del obj._verb_raw
             elif tag == "EXCD":
                 room.scripts.append(
                     ScriptData(
@@ -245,6 +229,7 @@ class ScummParser:
     def _parse_obcd(self, data: bytes, room_id: int) -> Optional[ScummObject]:
         """Parse an OBCD block into a ScummObject."""
         obj = ScummObject(object_id=0, room_id=room_id)
+        verb_raw: Optional[bytes] = None
 
         offset = 0
         while offset + 8 <= len(data):
@@ -261,11 +246,41 @@ class ScummParser:
                 obj.name = name if name else None
             elif tag == "VERB":
                 obj.verbs = self._parse_verb_table(inner)
-                obj._verb_raw = inner  # stash for transition scanning
+                verb_raw = inner
 
             offset += size
 
-        return obj if obj.object_id != 0 else None
+        if obj.object_id == 0:
+            return None
+        if verb_raw is not None and obj.verbs:
+            self._analyze_verbs(obj, verb_raw)
+        return obj
+
+    def _analyze_verbs(self, obj: ScummObject, verb_raw: bytes) -> None:
+        """Split the verb bytecode per verb offset and analyze each segment.
+
+        Each verb_id points at a script offset within the VERB chunk data.
+        A verb's script runs from its offset to the next distinct offset
+        (or the end of the chunk).  Multiple verb_ids sharing an offset
+        get the same analysis.
+        """
+        offsets = sorted({v.offset for v in obj.verbs})
+        if not offsets:
+            return
+        boundaries = offsets + [len(verb_raw)]
+        analyses = {}
+        for start, end in zip(boundaries[:-1], boundaries[1:]):
+            if start >= end:
+                continue
+            analyses[start] = analyze_script(verb_raw[start:end])
+        for v in obj.verbs:
+            a = analyses.get(v.offset)
+            if a is None:
+                continue
+            v.dialogue = list(a.dialogue)
+            v.effects = list(a.effects)
+            v.preconditions = list(a.preconditions)
+            v.transitions = sorted(a.transitions)
 
     def _parse_cdhd(self, data: bytes, obj: ScummObject) -> None:
         """Parse CDHD (object code header): id, position, flags."""
@@ -280,16 +295,24 @@ class ScummParser:
             obj.actor_dir = data[16]
 
     def _parse_verb_table(self, data: bytes) -> List[VerbEntry]:
-        """Parse verb entries: repeating (uint8 verb_id, uint16 LE offset) until 0."""
+        """Parse verb entries into offsets within the VERB chunk data.
+
+        Each entry is (uint8 verb_id, uint16 LE offset) terminated by 0.
+        Per ScummVM's findVerbEntrypoint, the stored offset is relative to
+        the start of the VERB chunk *header* (tag + size).  Since we
+        operate on the chunk data (already past the 8-byte header), we
+        subtract 8 to get a data-relative offset.
+        """
         verbs = []
-        offset = 0
-        while offset + 3 <= len(data):
-            verb_id = data[offset]
+        entry_offset = 0
+        while entry_offset + 3 <= len(data):
+            verb_id = data[entry_offset]
             if verb_id == 0:
                 break
-            verb_offset = struct.unpack_from("<H", data, offset + 1)[0]
-            verbs.append(VerbEntry(verb_id=verb_id, offset=verb_offset))
-            offset += 3
+            hdr_offset = struct.unpack_from("<H", data, entry_offset + 1)[0]
+            data_offset = hdr_offset - 8  # _resourceHeaderSize = 8 in v6
+            verbs.append(VerbEntry(verb_id=verb_id, offset=data_offset))
+            entry_offset += 3
         return verbs
 
     # --- high-level API ------------------------------------------------------
