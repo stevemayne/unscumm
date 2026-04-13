@@ -53,14 +53,16 @@ def build(
     # 2. Extract backgrounds
     viewer_game_dir = REPO_ROOT / "viewer" / "public" / "games" / game_id
     viewer_game_dir.mkdir(parents=True, exist_ok=True)
-    rooms_dir = viewer_game_dir / "rooms"
 
     if skip_backgrounds:
-        print(f"[{game_id}] Skipping background extraction")
+        print(f"[{game_id}] Skipping asset extraction")
     else:
-        print(f"[{game_id}] Extracting backgrounds…")
-        count = extract_backgrounds(index_path, rooms_dir)
-        print(f"[{game_id}] Wrote {count} backgrounds to {rooms_dir}")
+        print(f"[{game_id}] Extracting room backgrounds and object sprites…")
+        bg, obj = extract_backgrounds(index_path, viewer_game_dir)
+        print(
+            f"[{game_id}] Wrote {bg} backgrounds and {obj} object sprites "
+            f"under {viewer_game_dir}"
+        )
 
     # 3. Symlink parsed.json into the viewer's public tree
     viewer_parsed = viewer_game_dir / "parsed.json"

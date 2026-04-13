@@ -70,6 +70,7 @@ export function RoomDetails({
         <section>
           <h3>Interactions</h3>
           <InteractionsPanel
+            gameId={gameId}
             room={room}
             object={selectedObject}
             onNavigate={onNavigate}

@@ -1,6 +1,8 @@
 import type { Effect, Precondition, Room, ScummObject } from "../types";
+import { ObjectSprite } from "./ObjectSprite";
 
 interface Props {
+  gameId: string;
   room: Room;
   object: ScummObject;
   onNavigate: (roomId: number) => void;
@@ -135,16 +137,20 @@ function EffectPill({
   return null;
 }
 
-export function InteractionsPanel({ room, object, onNavigate }: Props) {
+export function InteractionsPanel({ gameId, room, object, onNavigate }: Props) {
   if (object.verbs.length === 0) {
     return <p className="muted">This object has no verb scripts.</p>;
   }
+  const spriteUrl = `${import.meta.env.BASE_URL}games/${gameId}/objects/obj_${object.object_id}_1.png`;
   return (
     <div className="interactions">
-      <h4>
-        {object.name ?? `#${object.object_id}`}{" "}
-        <span className="obj-badge">#{object.object_id}</span>
-      </h4>
+      <header className="interactions-head">
+        <ObjectSprite url={spriteUrl} />
+        <h4>
+          {object.name ?? `#${object.object_id}`}{" "}
+          <span className="obj-badge">#{object.object_id}</span>
+        </h4>
+      </header>
       {object.verbs.map((v, i) => {
         const anything =
           v.dialogue.length || v.effects.length || v.preconditions.length;

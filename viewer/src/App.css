@@ -431,10 +431,46 @@
 }
 
 .interactions h4 {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 16px;
   color: var(--accent);
   font-weight: 500;
+}
+
+.interactions-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.object-sprite {
+  display: block;
+  background: #0b0c10;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px;
+  image-rendering: pixelated;
+  /* Cap visual size so massive sprites (full-room overlays) don't dominate. */
+  max-width: 96px;
+  max-height: 96px;
+  width: auto;
+  height: auto;
+}
+
+.item-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.item-head .object-sprite {
+  max-width: 128px;
+  max-height: 128px;
 }
 
 .interactions .obj-badge {

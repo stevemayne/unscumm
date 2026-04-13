@@ -244,6 +244,7 @@ export default function App() {
           {effectiveSelectedId != null &&
           itemIndex.items[effectiveSelectedId] ? (
             <ItemDetails
+              gameId={effectiveGameId!}
               item={itemIndex.items[effectiveSelectedId]}
               roomLabels={roomLabels}
               onNavigateRoom={onPickRoom}

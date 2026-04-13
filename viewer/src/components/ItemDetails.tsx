@@ -1,6 +1,8 @@
 import type { ItemRecord, ItemReference } from "../itemIndex";
+import { ObjectSprite } from "./ObjectSprite";
 
 interface Props {
+  gameId: string;
   item: ItemRecord;
   roomLabels: Record<number, string | null>;
   onNavigateRoom: (roomId: number) => void;
@@ -80,27 +82,32 @@ function ReferenceList({
 }
 
 export function ItemDetails({
+  gameId,
   item,
   roomLabels,
   onNavigateRoom,
 }: Props) {
+  const spriteUrl = `${import.meta.env.BASE_URL}games/${gameId}/objects/obj_${item.objectId}_1.png`;
   return (
     <main className="room-details">
-      <header>
-        <h2>
-          {item.name ?? <em>(unnamed item)</em>}
-          <span className="dims">
-            #{item.objectId}
-            {item.homeRoomId != null ? <> · home: Room {item.homeRoomId}</> : null}
-          </span>
-        </h2>
-        <div className="summary">
-          {item.acquiredAt.length} acquisition site
-          {item.acquiredAt.length === 1 ? "" : "s"} ·{" "}
-          {item.requiredAt.length} requirement check
-          {item.requiredAt.length === 1 ? "" : "s"} ·{" "}
-          {item.stateChangedAt.length} state change
-          {item.stateChangedAt.length === 1 ? "" : "s"}
+      <header className="item-head">
+        <ObjectSprite url={spriteUrl} />
+        <div>
+          <h2>
+            {item.name ?? <em>(unnamed item)</em>}
+            <span className="dims">
+              #{item.objectId}
+              {item.homeRoomId != null ? <> · home: Room {item.homeRoomId}</> : null}
+            </span>
+          </h2>
+          <div className="summary">
+            {item.acquiredAt.length} acquisition site
+            {item.acquiredAt.length === 1 ? "" : "s"} ·{" "}
+            {item.requiredAt.length} requirement check
+            {item.requiredAt.length === 1 ? "" : "s"} ·{" "}
+            {item.stateChangedAt.length} state change
+            {item.stateChangedAt.length === 1 ? "" : "s"}
+          </div>
         </div>
       </header>
 
