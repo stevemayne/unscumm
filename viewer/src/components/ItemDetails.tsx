@@ -5,35 +5,20 @@ interface Props {
   gameId: string;
   item: ItemRecord;
   roomLabels: Record<number, string | null>;
+  verbNames: Record<string, string>;
   onNavigateRoom: (roomId: number) => void;
   onNavigateItem: (itemId: number) => void;
 }
 
-const VERB_NAMES: Record<number, string> = {
-  1: "Give",
-  2: "Pick up",
-  3: "Use",
-  4: "Open",
-  5: "Look at",
-  6: "Push",
-  7: "Close",
-  8: "Look at",
-  9: "Talk to",
-  10: "Pull",
-  11: "Turn on",
-  12: "Turn off",
-  13: "What is",
-  23: "Use",
-  26: "Walk to",
-};
-
-function verbLabel(id: number): string {
-  return VERB_NAMES[id] ? `${VERB_NAMES[id]} (${id})` : `verb ${id}`;
+function verbLabel(id: number, verbNames: Record<string, string>): string {
+  const name = verbNames[String(id)];
+  return name ? `${name} (${id})` : `verb ${id}`;
 }
 
 function ReferenceList({
   refs,
   roomLabels,
+  verbNames,
   emptyText,
   onNavigateRoom,
   showValue = false,
@@ -41,6 +26,7 @@ function ReferenceList({
 }: {
   refs: ItemReference[];
   roomLabels: Record<number, string | null>;
+  verbNames: Record<string, string>;
   emptyText: string;
   onNavigateRoom: (roomId: number) => void;
   showValue?: boolean;
@@ -63,7 +49,7 @@ function ReferenceList({
               <span className="ref-room">Room {ref.roomId}</span>
               <span className="ref-room-name">{roomLabel}</span>
               <span className="ref-source">
-                via {verbLabel(ref.verbId)} on{" "}
+                via {verbLabel(ref.verbId, verbNames)} on{" "}
                 <strong>
                   {ref.sourceObjectName ?? `#${ref.sourceObjectId}`}
                 </strong>
@@ -85,6 +71,7 @@ export function ItemDetails({
   gameId,
   item,
   roomLabels,
+  verbNames,
   onNavigateRoom,
 }: Props) {
   const spriteUrl = `${import.meta.env.BASE_URL}games/${gameId}/objects/obj_${item.objectId}_1.png`;
@@ -116,6 +103,7 @@ export function ItemDetails({
         <ReferenceList
           refs={item.acquiredAt}
           roomLabels={roomLabels}
+          verbNames={verbNames}
           emptyText="No script picks up or grants ownership of this item."
           onNavigateRoom={onNavigateRoom}
           showValue
@@ -128,6 +116,7 @@ export function ItemDetails({
         <ReferenceList
           refs={item.requiredAt}
           roomLabels={roomLabels}
+          verbNames={verbNames}
           emptyText="No script checks ownership or state of this item."
           onNavigateRoom={onNavigateRoom}
           showValue
@@ -141,6 +130,7 @@ export function ItemDetails({
           <ReferenceList
             refs={item.stateChangedAt}
             roomLabels={roomLabels}
+            verbNames={verbNames}
             emptyText=""
             onNavigateRoom={onNavigateRoom}
             showValue

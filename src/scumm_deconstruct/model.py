@@ -68,6 +68,7 @@ class GameData:
     chunks: List[ChunkInfo] = field(default_factory=list)
     rooms: Dict[int, Room] = field(default_factory=dict)
     objects: Dict[int, ScummObject] = field(default_factory=dict)
+    verb_names: Dict[int, str] = field(default_factory=dict)
 
     def add_chunk(self, tag: str, size: int, offset: int):
         self.chunks.append(ChunkInfo(tag=tag, size=size, offset=offset))
@@ -129,4 +130,5 @@ class GameData:
                 }
                 for obj_id, obj in self.objects.items()
             },
+            "verb_names": {str(k): v for k, v in self.verb_names.items()},
         }

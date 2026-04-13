@@ -7,6 +7,7 @@ interface Props {
   gameId: string;
   room: Room;
   roomLabels: Record<number, string | null>;
+  verbNames: Record<string, string>;
   onNavigate: (id: number) => void;
 }
 
@@ -14,6 +15,7 @@ export function RoomDetails({
   gameId,
   room,
   roomLabels,
+  verbNames,
   onNavigate,
 }: Props) {
   const [selectedObjectId, setSelectedObjectId] = useState<number | null>(
@@ -73,6 +75,7 @@ export function RoomDetails({
             gameId={gameId}
             room={room}
             object={selectedObject}
+            verbNames={verbNames}
             onNavigate={onNavigate}
           />
         </section>

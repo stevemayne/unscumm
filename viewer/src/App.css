@@ -134,6 +134,228 @@
   font-size: 11px;
 }
 
+/* --- Scene graph -------------------------------------------------------- */
+
+.graph-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.graph-layout:has(.graph-panel) {
+  grid-template-columns: 1fr 320px;
+}
+
+.scene-graph {
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.graph-panel {
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.graph-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.graph-panel-head h3 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.graph-panel-label {
+  color: var(--named);
+  font-style: italic;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.graph-panel-dims {
+  color: var(--text-dim);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.graph-panel-close {
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.graph-panel-close:hover {
+  color: var(--text-hi);
+  border-color: var(--border);
+  background: var(--panel-hi);
+}
+
+.graph-panel-thumb {
+  background: #0b0c10;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.graph-panel-thumb img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  image-rendering: pixelated;
+}
+
+.graph-panel-stats {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.graph-panel-stats .num {
+  color: var(--text-hi);
+  font-family: ui-monospace, Menlo, monospace;
+  font-weight: 500;
+}
+
+.graph-panel-open {
+  width: 100%;
+  margin-bottom: 16px;
+  background: var(--panel-hi);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.graph-panel-open:hover {
+  background: var(--accent-dim);
+  color: var(--text-hi);
+}
+
+.graph-panel section {
+  margin-bottom: 16px;
+}
+
+.graph-panel h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  font-weight: 500;
+  margin: 0 0 6px;
+}
+
+.graph-panel-objs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.graph-panel-objs li {
+  padding: 2px 0;
+  color: var(--text);
+}
+
+.graph-panel-objs .oid {
+  color: var(--text-dim);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  margin-right: 4px;
+}
+
+.graph-panel-exits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.graph-panel-exits li {
+  margin-bottom: 4px;
+}
+
+.graph-panel-exits button {
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  padding: 4px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--accent);
+}
+
+.graph-panel-exits button:hover {
+  background: var(--panel-hi);
+  border-color: var(--accent-dim);
+}
+
+.graph-panel-exits .target-name {
+  color: var(--text-dim);
+  margin-left: 6px;
+  font-size: 11px;
+}
+
+.scene-graph .react-flow__attribution {
+  display: none;
+}
+
+.scene-graph .react-flow__controls {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.scene-graph .react-flow__controls button {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  fill: var(--text);
+}
+
+.scene-graph .react-flow__controls button:hover {
+  background: var(--panel-hi);
+}
+
+.graph-node-content {
+  text-align: center;
+  line-height: 1.2;
+}
+
+.graph-node-id {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.graph-node-label {
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  margin-top: 1px;
+}
+
 .layout {
   flex: 1;
   display: grid;

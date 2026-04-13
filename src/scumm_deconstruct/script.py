@@ -66,7 +66,8 @@ _INLINE_SIZES: Dict[int, int] = {
 }
 
 _SUBOP_OPCODES = {0x6B, 0x9B, 0x9C, 0x9D, 0x9E, 0xA4, 0xA5, 0xA9, 0xAE}
-_STRING_SUBOPS = {0x9D: {0x4F}, 0x9E: {0x7C}}
+# Sub-op IDs verified against ScummVM scumm_v6.h::SubOpType.
+_STRING_SUBOPS = {0x9D: {0x58}, 0x9E: {0x7D}}
 _PRINT_OPCODES = {0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9}
 # talkActor / talkEgo read a direct null-terminated string (not a print block).
 _TALK_OPCODES = {0xBA, 0xBB}
@@ -127,6 +128,7 @@ class ScriptAnalysis:
     dialogue: List[str] = field(default_factory=list)
     effects: List[Dict[str, Any]] = field(default_factory=list)
     preconditions: List[Dict[str, Any]] = field(default_factory=list)
+    verb_names: Dict[int, str] = field(default_factory=dict)
 
 
 # ─── String decoding ─────────────────────────────────────────────────────────
@@ -248,6 +250,7 @@ def analyze_script(bytecode: bytes, max_room: int = 255) -> ScriptAnalysis:
     """Full static analysis of a v6 script."""
     result = ScriptAnalysis()
     stack: List[StackVal] = []
+    cur_verb: Optional[int] = None  # tracks verbOps SO_VERB_INIT context
     offset = 0
     length = len(bytecode)
 
@@ -465,7 +468,19 @@ def analyze_script(bytecode: bytes, max_room: int = 255) -> ScriptAnalysis:
             if offset < length:
                 sub = bytecode[offset]
                 offset += 1
-                if op in _STRING_SUBOPS and sub in _STRING_SUBOPS[op]:
+                # verbOps SO_VERB_INIT (0xC4) — pops verb id, sets _curVerb
+                if op == 0x9E and sub == 0xC4:
+                    v = _pop_const(stack)
+                    if v is not None:
+                        cur_verb = v
+                # verbOps SO_VERB_NAME (0x7D) — inline string
+                if op == 0x9E and sub == 0x7D:
+                    text, offset = decode_string(bytecode, offset)
+                    text = text.strip()
+                    if text and cur_verb is not None:
+                        # First name wins (verb may be redefined elsewhere).
+                        result.verb_names.setdefault(cur_verb, text)
+                elif op in _STRING_SUBOPS and sub in _STRING_SUBOPS[op]:
                     _text, offset = decode_string(bytecode, offset)
                 if op == 0xA9 and sub in (0xE8, 0xE9, 0xEA, 0xEB, 0xEC):
                     offset += 2

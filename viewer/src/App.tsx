@@ -4,6 +4,8 @@ import { RoomList } from "./components/RoomList";
 import { RoomDetails } from "./components/RoomDetails";
 import { ItemList } from "./components/ItemList";
 import { ItemDetails } from "./components/ItemDetails";
+import { SceneGraph } from "./components/SceneGraph";
+import { GraphRoomPanel } from "./components/GraphRoomPanel";
 import { useLocation } from "./useLocation";
 import { buildItemIndex } from "./itemIndex";
 import { buildRoomLabels } from "./roomLabels";
@@ -11,7 +13,7 @@ import "./App.css";
 
 const BASE = import.meta.env.BASE_URL;
 
-type View = "rooms" | "items";
+type View = "rooms" | "items" | "graph";
 
 interface Route {
   gameId: string | null;
@@ -23,6 +25,7 @@ const ROOM_RE = /^\/games\/([^/]+)\/rooms\/(\d+)\/?$/;
 const ROOMS_RE = /^\/games\/([^/]+)\/rooms\/?$/;
 const ITEM_RE = /^\/games\/([^/]+)\/items\/(\d+)\/?$/;
 const ITEMS_RE = /^\/games\/([^/]+)\/items\/?$/;
+const GRAPH_RE = /^\/games\/([^/]+)\/graph(?:\/(\d+))?\/?$/;
 const GAME_RE = /^\/games\/([^/]+)\/?$/;
 
 function parseRoute(path: string): Route {
@@ -39,6 +42,13 @@ function parseRoute(path: string): Route {
   if ((m = ITEMS_RE.exec(path))) {
     return { gameId: m[1], view: "items", selectedId: null };
   }
+  if ((m = GRAPH_RE.exec(path))) {
+    return {
+      gameId: m[1],
+      view: "graph",
+      selectedId: m[2] != null ? Number(m[2]) : null,
+    };
+  }
   if ((m = GAME_RE.exec(path))) {
     return { gameId: m[1], view: "rooms", selectedId: null };
   }
@@ -50,7 +60,13 @@ function buildRoute(
   view: View,
   selectedId: number | null,
 ): string {
-  const segment = view === "items" ? "items" : "rooms";
+  const segment =
+    view === "items" ? "items" : view === "graph" ? "graph" : "rooms";
+  if (view === "graph") {
+    return selectedId != null
+      ? `/games/${gameId}/graph/${selectedId}`
+      : `/games/${gameId}/graph`;
+  }
   return selectedId != null
     ? `/games/${gameId}/${segment}/${selectedId}`
     : `/games/${gameId}/${segment}`;
@@ -106,10 +122,12 @@ export default function App() {
   // Resolve effective selection based on the view.
   const effectiveSelectedId = useMemo<number | null>(() => {
     if (!game) return null;
-    if (route.view === "rooms") {
+    if (route.view === "rooms" || route.view === "graph") {
       if (route.selectedId != null && game.rooms[String(route.selectedId)]) {
         return route.selectedId;
       }
+      // Graph view doesn't need a default-selected room.
+      if (route.view === "graph") return route.selectedId;
       const sorted = Object.keys(game.rooms).sort(
         (a, b) => Number(a) - Number(b),
       );
@@ -128,7 +146,9 @@ export default function App() {
 
   // Canonicalize the URL when defaults kick in.
   useEffect(() => {
-    if (!effectiveGameId || effectiveSelectedId == null) return;
+    if (!effectiveGameId) return;
+    // Graph view is fine without a selected room (the graph is the focus).
+    if (effectiveSelectedId == null && route.view !== "graph") return;
     const target = buildRoute(effectiveGameId, route.view, effectiveSelectedId);
     if (target !== path) {
       navigate(target, { replace: true });
@@ -223,6 +243,12 @@ export default function App() {
           >
             Items{itemIndex ? ` (${itemIndex.ordered.length})` : ""}
           </button>
+          <button
+            className={route.view === "graph" ? "active" : ""}
+            onClick={() => onSwitchView("graph")}
+          >
+            Graph
+          </button>
         </div>
         {selectedGame ? (
           <span className="stat">
@@ -234,6 +260,37 @@ export default function App() {
 
       {!game ? (
         <div className="loading">Loading {selectedGame?.title}…</div>
+      ) : route.view === "graph" ? (
+        <div className="graph-layout">
+          <SceneGraph
+            game={game}
+            roomLabels={roomLabels}
+            selectedRoomId={effectiveSelectedId}
+            onSelectRoom={(roomId) => {
+              if (effectiveGameId) {
+                navigate(buildRoute(effectiveGameId, "graph", roomId));
+              }
+            }}
+          />
+          {effectiveSelectedId != null &&
+          game.rooms[String(effectiveSelectedId)] &&
+          effectiveGameId ? (
+            <GraphRoomPanel
+              gameId={effectiveGameId}
+              room={game.rooms[String(effectiveSelectedId)]}
+              roomLabels={roomLabels}
+              onSelectRoom={(id) =>
+                navigate(buildRoute(effectiveGameId, "graph", id))
+              }
+              onOpenInRooms={(id) =>
+                navigate(buildRoute(effectiveGameId, "rooms", id))
+              }
+              onClose={() =>
+                navigate(buildRoute(effectiveGameId, "graph", null))
+              }
+            />
+          ) : null}
+        </div>
       ) : route.view === "items" && itemIndex ? (
         <div className="layout">
           <ItemList
@@ -247,6 +304,7 @@ export default function App() {
               gameId={effectiveGameId!}
               item={itemIndex.items[effectiveSelectedId]}
               roomLabels={roomLabels}
+              verbNames={game.verb_names ?? {}}
               onNavigateRoom={onPickRoom}
               onNavigateItem={onPickItem}
             />
@@ -269,6 +327,7 @@ export default function App() {
               gameId={effectiveGameId}
               room={game.rooms[String(effectiveSelectedId)]}
               roomLabels={roomLabels}
+              verbNames={game.verb_names ?? {}}
               onNavigate={onPickRoom}
             />
           ) : (

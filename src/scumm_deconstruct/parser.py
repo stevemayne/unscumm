@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from .model import GameData, Room, ScriptData, ScummObject, VerbEntry
-from .script import analyze_script, scan_transitions
+from .script import analyze_script
 
 
 class ScummParser:
@@ -130,7 +130,8 @@ class ScummParser:
                     game_data.objects[obj_id].class_data = info["class_data"]
 
         # Aggregate room-level transitions from (a) non-verb scripts and
-        # (b) per-verb analyses on each object.
+        # (b) per-verb analyses on each object.  Also pluck verb-name
+        # bindings out of any script that calls verbOps SO_VERB_INIT/NAME.
         max_room = max(game_data.rooms.keys()) if game_data.rooms else 0
         for room in game_data.rooms.values():
             targets: set = set()
@@ -139,7 +140,10 @@ class ScummParser:
                 # LSCR scripts have a 1-byte script number prefix
                 if script.script_type == "local" and raw:
                     raw = raw[1:]
-                targets.update(scan_transitions(raw, max_room=max_room))
+                analysis = analyze_script(raw, max_room=max_room)
+                targets.update(analysis.transitions)
+                for vid, name in analysis.verb_names.items():
+                    game_data.verb_names.setdefault(vid, name)
             for obj in room.objects:
                 for v in obj.verbs:
                     targets.update(v.transitions)

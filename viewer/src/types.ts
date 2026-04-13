@@ -65,6 +65,8 @@ export interface GameData {
   chunks: { tag: string; size: number; offset: number }[];
   rooms: Record<string, Room>;
   objects: Record<string, GlobalObjectInfo>;
+  /** Verb id (as string for JSON) → human-readable name from verbOps. */
+  verb_names: Record<string, string>;
 }
 
 export interface GameManifestEntry {

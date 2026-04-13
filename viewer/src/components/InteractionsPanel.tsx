@@ -5,37 +5,13 @@ interface Props {
   gameId: string;
   room: Room;
   object: ScummObject;
+  verbNames: Record<string, string>;
   onNavigate: (roomId: number) => void;
 }
 
-// Common SCUMM verb IDs.  Actual mappings are per-game (set up by verbOps
-// scripts at runtime); this is a reasonable default based on DOTT's UI.
-const VERB_NAMES: Record<number, string> = {
-  1: "Give",
-  2: "Pick up",
-  3: "Use",
-  4: "Open",
-  5: "Look at",
-  6: "Push",
-  7: "Close",
-  8: "Look at",
-  9: "Talk to",
-  10: "Pull",
-  11: "Turn on",
-  12: "Turn off",
-  13: "What is",
-  23: "Use",
-  26: "Walk to",
-  51: "Special",
-  52: "Default",
-  80: "Default action",
-  90: "Fallback",
-  91: "Fallback",
-  92: "Fallback",
-};
-
-function verbLabel(id: number): string {
-  return VERB_NAMES[id] ? `${VERB_NAMES[id]} (${id})` : `Verb ${id}`;
+function verbLabel(id: number, verbNames: Record<string, string>): string {
+  const name = verbNames[String(id)];
+  return name ? `${name} (${id})` : `Verb ${id}`;
 }
 
 function objectName(room: Room, id: number): string | null {
@@ -137,7 +113,13 @@ function EffectPill({
   return null;
 }
 
-export function InteractionsPanel({ gameId, room, object, onNavigate }: Props) {
+export function InteractionsPanel({
+  gameId,
+  room,
+  object,
+  verbNames,
+  onNavigate,
+}: Props) {
   if (object.verbs.length === 0) {
     return <p className="muted">This object has no verb scripts.</p>;
   }
@@ -156,7 +138,7 @@ export function InteractionsPanel({ gameId, room, object, onNavigate }: Props) {
           v.dialogue.length || v.effects.length || v.preconditions.length;
         return (
           <div className="verb-block" key={i}>
-            <div className="verb-head">{verbLabel(v.verb_id)}</div>
+            <div className="verb-head">{verbLabel(v.verb_id, verbNames)}</div>
             {!anything ? (
               <div className="muted">(no recognised actions)</div>
             ) : null}
